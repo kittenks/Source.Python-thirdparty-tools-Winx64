@@ -1,0 +1,14 @@
+RECENT CALLS  8 retained over 5 function(s), 11 calls total
+--- func 0x7FFA838377F0   test.dll+0x7FFA838377F0   last 1 of 1 calls
+    CALL  __call__       func 0x7FFA838377F0  this 0x7FFA7DFB1A30  args(2): Pointer(0x7FFA836A1A30), Pointer(0x7FFA7DFA0010)
+--- func 0x7FFA83837800   test.dll+0x7FFA83837800   last 1 of 1 calls
+    CALL  __call__       func 0x7FFA83837800  this 0x7FFA7DFB1A30  args(1): Pointer(0xDEAD0000BEEF0000)
+--- func 0x7FFA83837840   test.dll+0x7FFA83837840   last 1 of 1 calls
+    CALL  __call__       func 0x7FFA83837840  this 0x7FFA7DFB1A30  args(2): 42, 'hello'
+--- func 0x7FFA83837850   test.dll+0x7FFA83837850   last 1 of 1 calls
+    CALL  __call__       func 0x7FFA83837850  this 0x7FFA7DFB1A30  args(2): 1, 2
+--- func 0x7FFA83837860   test.dll+0x7FFA83837860   last 4 of 4 calls
+    CALL  call_trampoline func 0x7FFA83837860  this 0x7FFA7DFB1A30  args(1): Pointer(0x7FFA7DFB0099)
+    CALL  __call__       func 0x7FFA83837860  this 0x7FFA7DFB1A30  args(1): Pointer(0x7FFA7DFB0099)
+    CALL  skip_hooks     func 0x7FFA83837860  this 0x7FFA7DFB1A30  args(1): Pointer(0x7FFA7DFB0099)
+    CALL  __call__       func 0x7FFA83837860  this 0x7FFA7DFB1A30  args(1): Pointer(0x7FFA7DFB0099)

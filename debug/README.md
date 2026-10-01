@@ -84,6 +84,11 @@ unload/remove it when finished. They write their output under
   and transcripts.
 - `rcon.py` — minimal RCON client used to drive hibernation/bot joins remotely.
 - `boot.txt`, `booterr.txt`, `trace.txt` — captured boot and trace output.
+- `sp_console_calls.log` — captured DynamicHooks x64 convention calls
+  (`__call__`, `call_trampoline`, `skip_hooks` with their arguments, including
+  the `0xDEAD0000BEEF0000` sentinel and `42`/`'hello'`), proving the MS x64
+  bridge forwards handler arguments in rcx/rdx/r8/r9 instead of the System V
+  registers.
 - `compare-exports.ps1`, `compare-symbols.ps1` — compare DLL exports/symbols to
   detect ABI mismatches (this is how the System V vs MS x64 DynamicHooks library
   was spotted).
