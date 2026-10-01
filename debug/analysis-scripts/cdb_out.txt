@@ -1,0 +1,135 @@
+Opened log file 'D:\boost-build\cdb_out.txt'
+
+Microsoft (R) Windows Debugger Version 10.0.22621.755 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+
+Loading Dump File [C:\Users\Administrator\Documents\GitHub\Source.Python\src\Builds\Windows\css-x64\Release\core.dll]
+Symbol search path is: srv*
+Executable search path is: 
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+ModLoad: 00000001`80000000 00000001`80a15000   C:\Users\Administrator\Documents\GitHub\Source.Python\src\Builds\Windows\css-x64\Release\core.dll
+*** WARNING: Unable to verify checksum for core.dll
+core!CreateInterface+0x360b0:
+00000001`8051d980 48895c2408      mov     qword ptr [rsp+8],rbx ss:00000000`00000008=????????????????
+0:000> .sympath srv*C:\symcache*https://msdl.microsoft.com/download/symbols;C:\Users\Administrator\Documents\GitHub\Source.Python\src\Builds\Windows\css-x64\Release
+Symbol search path is: srv*C:\symcache*https://msdl.microsoft.com/download/symbols;C:\Users\Administrator\Documents\GitHub\Source.Python\src\Builds\Windows\css-x64\Release
+Expanded Symbol search path is: srv*c:\symcache*https://msdl.microsoft.com/download/symbols;c:\users\administrator\documents\github\source.python\src\builds\windows\css-x64\release
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*C:\symcache*https://msdl.microsoft.com/download/symbols
+OK                                             C:\Users\Administrator\Documents\GitHub\Source.Python\src\Builds\Windows\css-x64\Release
+0:000> .lines -e
+Line number information will be loaded
+0:000> .reload /f core.dll
+*** WARNING: Unable to verify checksum for core.dll
+0:000> lmm core
+start             end                 module name
+00000001`80000000 00000001`80a15000   core     C (private pdb symbols)  c:\users\administrator\documents\github\source.python\src\builds\windows\css-x64\release\core.pdb
+0:000> ======== NEAREST SYMBOL TO FAULT core+0x566632 ========
+       ^ Syntax error in '======== NEAREST SYMBOL TO FAULT core+0x566632 ========'
+0:000> ln 0x180566632
+minkernel\crts\ucrt\src\appcrt\lowio\open.cpp(736)+0x4
+(00000001`80566438)   core!_wsopen_nolock+0x1fa   |  (00000001`80566850)   core!_query_new_mode
+0:000> ======== SOURCE LINE AT FAULT ========
+       ^ Syntax error in '======== SOURCE LINE AT FAULT ========'
+0:000> .lines -e
+Line number information will be loaded
+0:000> # 0x180566632
+Search address set to 00000001`8051d980 
+                   ^ Memory access error in '# 0x180566632'
+0:000> ======== DISASM BEFORE ========
+       ^ Syntax error in '======== DISASM BEFORE ========'
+0:000> ub 0x180566632 L18
+core!_wsopen_nolock+0x1a6 [minkernel\crts\ucrt\src\appcrt\lowio\open.cpp @ 723]:
+00000001`805665de 48630f          movsxd  rcx,dword ptr [rdi]
+00000001`805665e1 488bc1          mov     rax,rcx
+00000001`805665e4 83e13f          and     ecx,3Fh
+00000001`805665e7 48c1f806        sar     rax,6
+00000001`805665eb 488d0cc9        lea     rcx,[rcx+rcx*8]
+00000001`805665ef 498b04c7        mov     rax,qword ptr [r15+rax*8]
+00000001`805665f3 408874c839      mov     byte ptr [rax+rcx*8+39h],sil
+00000001`805665f8 41f6c402        test    r12b,2
+00000001`805665fc 741d            je      core!_wsopen_nolock+0x1e3 (00000001`8056661b)
+00000001`805665fe 8b0f            mov     ecx,dword ptr [rdi]
+00000001`80566600 e85ffbffff      call    core!decode_options+0x154 (00000001`80566164)
+00000001`80566605 448bf0          mov     r14d,eax
+00000001`80566608 85c0            test    eax,eax
+00000001`8056660a 740f            je      core!_wsopen_nolock+0x1e3 (00000001`8056661b)
+00000001`8056660c 8b0f            mov     ecx,dword ptr [rdi]
+00000001`8056660e e8d5f3feff      call    core!_close_internal+0x4 (00000001`805559e8)
+00000001`80566613 418bc6          mov     eax,r14d
+00000001`80566616 e94f010000      jmp     core!_wsopen_nolock+0x332 (00000001`8056676a)
+00000001`8056661b 0f104587        movups  xmm0,xmmword ptr [rbp-79h]
+00000001`8056661f 4c8d4c2440      lea     r9,[rsp+40h]
+00000001`80566624 8b0f            mov     ecx,dword ptr [rdi]
+00000001`80566626 f20f104dbf      movsd   xmm1,mmword ptr [rbp-41h]
+00000001`8056662b 488d55df        lea     rdx,[rbp-21h]
+00000001`8056662f 458bc4          mov     r8d,r12d
+0:000> ======== DISASM AT/AFTER ========
+       ^ Syntax error in '======== DISASM AT/AFTER ========'
+0:000> u 0x180566632 L18
+core!_wsopen_nolock+0x1fa [minkernel\crts\ucrt\src\appcrt\lowio\open.cpp @ 736]:
+00000001`80566632 0f2945df        movaps  xmmword ptr [rbp-21h],xmm0
+00000001`80566636 4088742440      mov     byte ptr [rsp+40h],sil
+00000001`8056663b f20f114def      movsd   mmword ptr [rbp-11h],xmm1
+00000001`80566640 e88bf6ffff      call    core!common_sopen_dispatch<char>+0x4 (00000001`80565cd0)
+00000001`80566645 448bf0          mov     r14d,eax
+00000001`80566648 486307          movsxd  rax,dword ptr [rdi]
+00000001`8056664b 4585f6          test    r14d,r14d
+00000001`8056664e 7404            je      core!_wsopen_nolock+0x21c (00000001`80566654)
+00000001`80566650 8bc8            mov     ecx,eax
+00000001`80566652 ebba            jmp     core!_wsopen_nolock+0x1d6 (00000001`8056660e)
+00000001`80566654 488bc8          mov     rcx,rax
+00000001`80566657 83e03f          and     eax,3Fh
+00000001`8056665a 48c1f906        sar     rcx,6
+00000001`8056665e 488d14c0        lea     rdx,[rax+rax*8]
+00000001`80566662 8a442440        mov     al,byte ptr [rsp+40h]
+00000001`80566666 498b0ccf        mov     rcx,qword ptr [r15+rcx*8]
+00000001`8056666a 8844d139        mov     byte ptr [rcx+rdx*8+39h],al
+00000001`8056666e 48630f          movsxd  rcx,dword ptr [rdi]
+00000001`80566671 488bc1          mov     rax,rcx
+00000001`80566674 83e13f          and     ecx,3Fh
+00000001`80566677 48c1f806        sar     rax,6
+00000001`8056667b 488d14c9        lea     rdx,[rcx+rcx*8]
+00000001`8056667f 498b0cc7        mov     rcx,qword ptr [r15+rax*8]
+00000001`80566683 418bc4          mov     eax,r12d
+0:000> ======== CALLEE core+0x565cd0 ========
+       ^ Syntax error in '======== CALLEE core+0x565cd0 ========'
+0:000> ln 0x180565cd0
+minkernel\crts\ucrt\src\appcrt\lowio\open.cpp(154)+0x4
+(00000001`80565ccc)   core!common_sopen_dispatch<char>+0x4   |  (00000001`80565d90)   core!configure_text_mode
+0:000> u 0x180565cd0 L8
+core!common_sopen_dispatch<char>+0x4 [minkernel\crts\ucrt\src\appcrt\lowio\open.cpp @ 154]:
+00000001`80565cd0 4c8bdc          mov     r11,rsp
+00000001`80565cd3 49895b10        mov     qword ptr [r11+10h],rbx
+00000001`80565cd7 49896b18        mov     qword ptr [r11+18h],rbp
+00000001`80565cdb 49897320        mov     qword ptr [r11+20h],rsi
+00000001`80565cdf 57              push    rdi
+00000001`80565ce0 4156            push    r14
+00000001`80565ce2 4157            push    r15
+00000001`80565ce4 4883ec30        sub     rsp,30h
+0:000> q
+quit:
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'

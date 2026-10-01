@@ -1,0 +1,82 @@
+{
+  "_about": "Single source of truth for the Windows x86-64 third-party rebuilds used by the Source.Python spWinx64 port. Every GitHub Actions build job reads this file. Everything targets MSVC x86-64, static CRT (/MT), Release, matching how src/makefiles/win32/win32.base.cmake links the binaries. An empty expected_sha256 means 'record the digest on first download'; once a digest is recorded here the job fails if the upstream file changes.",
+  "toolset": {
+    "runner": "windows-2022",
+    "msvc": "Visual Studio 2022 (vc143), x86-64 native tools",
+    "crt": "/MT (MultiThreaded static)",
+    "optimization": "/O2",
+    "artifact_retention_days": 90
+  },
+  "boost": {
+    "version": "1.87.0",
+    "source_url": "https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz",
+    "expected_sha256": "",
+    "build": "direct cl.exe/lib.exe (b2's MSVC toolset provisioning is bypassed); see scripts/build-boost.ps1",
+    "python_for_headers": "actions/setup-python@v5, python-version 3.13, architecture x64 (headers only; the import lib is vendored in Source.Python)",
+    "components": {
+      "system": ["libs/system/src/error_code.cpp"],
+      "filesystem": [
+        "libs/filesystem/src/codecvt_error_category.cpp",
+        "libs/filesystem/src/directory.cpp",
+        "libs/filesystem/src/exception.cpp",
+        "libs/filesystem/src/operations.cpp",
+        "libs/filesystem/src/path.cpp",
+        "libs/filesystem/src/path_traits.cpp",
+        "libs/filesystem/src/portability.cpp",
+        "libs/filesystem/src/unique_path.cpp",
+        "libs/filesystem/src/utf8_codecvt_facet.cpp",
+        "libs/filesystem/src/windows_file_codecvt.cpp"
+      ],
+      "python313": "all libs/python/src/**/*.cpp except libs/python/src/numpy/** (27 translation units)"
+    },
+    "defines": ["WIN32", "_WINDOWS", "NDEBUG", "BOOST_ALL_NO_LIB", "BOOST_SYSTEM_STATIC_LINK", "BOOST_FILESYSTEM_STATIC_LINK", "BOOST_FILESYSTEM_NO_CXX20_ATOMIC_REF", "BOOST_PYTHON_STATIC_LIB", "BOOST_PYTHON_SOURCE", "_HAS_EXCEPTIONS=1", "_SCL_SECURE_NO_WARNINGS", "_CRT_SECURE_NO_WARNINGS"],
+    "outputs": [
+      "libboost_system-vc143-mt-s-x64-1_87.lib",
+      "libboost_filesystem-vc143-mt-s-x64-1_87.lib",
+      "libboost_python313-vc143-mt-s-x64-1_87.lib"
+    ]
+  },
+  "asmjit": {
+    "version": "1.14.0",
+    "scm": "git",
+    "source_url": "https://github.com/asmjit/asmjit.git",
+    "ref": "1.14.0",
+    "expected_commit": "",
+    "build": "cmake -A x64 -DASMJIT_STATIC=TRUE -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded",
+    "outputs": ["AsmJit.lib"]
+  },
+  "dyncall": {
+    "version": "1.1",
+    "scm": "git",
+    "source_url": "https://github.com/dyncall/dyncall.git",
+    "ref": "r1.1",
+    "expected_commit": "",
+    "vendored_note": "The libraries vendored in Source.Python were originally built from a 1.2-dev master snapshot. The Win64 dyncall/dyncallback/dynload backends are unchanged between release 1.1 and that snapshot, so the formal 1.1 release is pinned for a reproducible, tagged source.",
+    "build": "cmake -A x64 with static CRT (fallback: Nmakefile)",
+    "outputs": ["libdyncall_s.lib", "libdyncallback_s.lib", "libdynload_s.lib"]
+  },
+  "dynamichooks": {
+    "version": "spWinx64",
+    "source": "Checked out from the sibling Source.Python repository (it carries the Windows x86-64 hook fixes; upstream DynamicHooks does not).",
+    "source_url": "https://github.com/kittenks/Source.Python.git",
+    "ref": "spWinx64",
+    "source_paths": [
+      "src/thirdparty/DynamicHooks",
+      "src/thirdparty/HDE64",
+      "src/thirdparty/AsmJit/include"
+    ],
+    "build": "direct cl.exe/lib.exe, defines DYNAMICHOOKS_X86_64 ASMJIT_STATIC WIN32 _WIN32 _WIN64 NDEBUG, C++ /std:c++17",
+    "translation_units": ["HDE64/hde64.c (C)", "DynamicHooks/src/hook_x64.cpp", "DynamicHooks/src/manager.cpp", "DynamicHooks/src/registers.cpp", "DynamicHooks/src/x64MsWin64.cpp"],
+    "outputs": ["DynamicHooks.lib"]
+  },
+  "python_runtime": {
+    "version": "3.13.2",
+    "kind": "official CPython embeddable distribution (interpreter is NOT rebuilt from source to avoid ABI drift)",
+    "source_url": "https://www.python.org/ftp/python/3.13.2/python-3.13.2-embed-amd64.zip",
+    "expected_sha256": "1e803610b140cbf69dfa2ceaaeb39651bef75a239c381289e827c30862a27b93",
+    "package_layout": "Python3/plat-win",
+    "drop_from_embeddable": ["python313.zip", "python313._pth"],
+    "rationale": "Source.Python ships its own standard library, so the embeddable stdlib zip and path config are not used. Only the native runtime DLLs and extension modules are packaged, which are exactly the 28 PE-x86-64 files verified on a working Counter-Strike: Source x64 server.",
+    "outputs_summary": "python3.dll, python313.dll, vcruntime140.dll, vcruntime140_1.dll, libffi-8.dll, libcrypto-3.dll, libssl-3.dll, sqlite3.dll and the x86-64 .pyd extension modules"
+  }
+}

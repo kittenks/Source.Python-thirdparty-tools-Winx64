@@ -1,0 +1,171 @@
+name: Build third-party tools (Windows x86-64)
+
+# Manual-only. Select any combination of tools; each selected tool builds in its
+# own job on a clean Windows runner and is published as a separate artifact with
+# a SHA256SUMS.txt. Nothing is released during the testing phase.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_boost:
+        description: "Boost 1.87 static libs (system / filesystem / python313), /MT"
+        type: boolean
+        default: true
+      build_asmjit:
+        description: "AsmJit 1.14.0 static lib, /MT"
+        type: boolean
+        default: true
+      build_dyncall:
+        description: "dyncall static libs (dyncall_s / dyncallback_s / dynload_s), /MT"
+        type: boolean
+        default: true
+      build_dynamichooks:
+        description: "DynamicHooks + HDE64 static lib from Source.Python spWinx64 sources"
+        type: boolean
+        default: true
+      build_python_runtime:
+        description: "Repackage the official CPython 3.13.2 embeddable amd64 runtime"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  boost:
+    if: inputs.build_boost
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - name: Checkout tools repository
+        uses: actions/checkout@v4
+      - name: Set up CPython 3.13 (x64 headers)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          architecture: 'x64'
+      - name: Download and extract Boost 1.87.0
+        shell: pwsh
+        run: |
+          . .\scripts\common.ps1
+          New-Item -ItemType Directory -Force _deps | Out-Null
+          Download-CheckedFile -Url 'https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz' -Destination '_deps\boost.tar.gz'
+          tar -xzf _deps\boost.tar.gz -C _deps
+          if (-not (Test-Path '_deps\boost_1_87_0\boost\python.hpp')) { throw 'Boost extraction failed.' }
+      - name: Build Boost
+        shell: pwsh
+        run: .\scripts\build-boost.ps1 -BoostSource '_deps\boost_1_87_0' -PythonInclude "$env:pythonLocation\include"
+      - name: Upload Boost artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: boost-win64
+          path: artifacts/boost-win64
+          retention-days: 90
+          if-no-files-found: error
+
+  asmjit:
+    if: inputs.build_asmjit
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - name: Checkout tools repository
+        uses: actions/checkout@v4
+      - name: Checkout AsmJit 1.14.0
+        uses: actions/checkout@v4
+        with:
+          repository: asmjit/asmjit
+          ref: '1.14.0'
+          path: _deps/asmjit
+          persist-credentials: false
+      - name: Show AsmJit revision
+        shell: pwsh
+        run: git -C _deps/asmjit log -1 --oneline
+      - name: Build AsmJit
+        shell: pwsh
+        run: .\scripts\build-asmjit.ps1 -Source '_deps\asmjit'
+      - name: Upload AsmJit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: asmjit-win64
+          path: artifacts/asmjit-win64
+          retention-days: 90
+          if-no-files-found: error
+
+  dyncall:
+    if: inputs.build_dyncall
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - name: Checkout tools repository
+        uses: actions/checkout@v4
+      - name: Checkout dyncall r1.1
+        uses: actions/checkout@v4
+        with:
+          repository: dyncall/dyncall
+          ref: 'r1.1'
+          path: _deps/dyncall
+          persist-credentials: false
+      - name: Show dyncall revision
+        shell: pwsh
+        run: "git -C _deps/dyncall log -1 --oneline; git -C _deps/dyncall tag --points-at HEAD"
+      - name: Build dyncall
+        shell: pwsh
+        run: .\scripts\build-dyncall.ps1 -Source '_deps\dyncall'
+      - name: Upload dyncall artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dyncall-win64
+          path: artifacts/dyncall-win64
+          retention-days: 90
+          if-no-files-found: error
+
+  dynamichooks:
+    if: inputs.build_dynamichooks
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - name: Checkout tools repository
+        uses: actions/checkout@v4
+      - name: Checkout Source.Python spWinx64 third-party sources
+        uses: actions/checkout@v4
+        with:
+          repository: kittenks/Source.Python
+          ref: spWinx64
+          path: _deps/sp
+          persist-credentials: false
+          sparse-checkout: |
+            src/thirdparty/DynamicHooks
+            src/thirdparty/HDE64
+            src/thirdparty/AsmJit
+          sparse-checkout-cone-mode: false
+      - name: Show Source.Python revision
+        shell: pwsh
+        run: git -C _deps/sp log -1 --oneline
+      - name: Build DynamicHooks
+        shell: pwsh
+        run: .\scripts\build-dynamichooks.ps1 -ThirdPartyDir '_deps\sp\src\thirdparty'
+      - name: Upload DynamicHooks artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dynamichooks-win64
+          path: artifacts/dynamichooks-win64
+          retention-days: 90
+          if-no-files-found: error
+
+  python-runtime:
+    if: inputs.build_python_runtime
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - name: Checkout tools repository
+        uses: actions/checkout@v4
+      - name: Fetch and repackage CPython 3.13.2 embeddable amd64
+        shell: pwsh
+        run: .\scripts\fetch-python-runtime.ps1
+      - name: Upload Python runtime artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-runtime-win64
+          path: artifacts/python-runtime-win64
+          retention-days: 90
+          if-no-files-found: error

@@ -1,0 +1,7 @@
+﻿image_base=0x180000000 sections=['.text', '.rdata', '.data', '.pdata', '_RDATA', '.reloc']
+type descriptors:
+  TD rva=0x6E91D8 name=.?AVIServerGameDLL@@
+  TD rva=0x6E92D0 name=.?AVCServerGameDLL@@
+COL rva=0x5E4388 sig=1 off=0 pTD=0x6E92D0 pSelf=0x5E4388
+occurrences of 88 51 10 C3 (mov [rcx+0x10],dl; ret): 1
+   file 0x1B46A0 RVA 0x1B52A0

@@ -1,0 +1,17 @@
+.sympath srv*C:\symcache*https://msdl.microsoft.com/download/symbols;C:\Users\Administrator\Documents\GitHub\Source.Python\src\Builds\Windows\css-x64\Release
+.lines -e
+.reload /f core.dll
+lmm core
+======== NEAREST SYMBOL TO FAULT core+0x566632 ========
+ln 0x180566632
+======== SOURCE LINE AT FAULT ========
+.lines -e
+# 0x180566632
+======== DISASM BEFORE ========
+ub 0x180566632 L18
+======== DISASM AT/AFTER ========
+u 0x180566632 L18
+======== CALLEE core+0x565cd0 ========
+ln 0x180565cd0
+u 0x180565cd0 L8
+q

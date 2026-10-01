@@ -1,0 +1,730 @@
+/**
+* =============================================================================
+* Source Python
+* Copyright (C) 2012-2015 Source Python Development Team.  All rights reserved.
+* =============================================================================
+*
+* This program is free software; you can redistribute it and/or modify it under
+* the terms of the GNU General Public License, version 3.0, as published by the
+* Free Software Foundation.
+*
+* This program is distributed in the hope that it will be useful, but WITHOUT
+* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+* FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+* details.
+*
+* You should have received a copy of the GNU General Public License along with
+* this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+* As a special exception, the Source Python Team gives you permission
+* to link the code of this program (as well as its derivative works) to
+* "Half-Life 2," the "Source Engine," and any Game MODs that run on software
+* by the Valve Corporation.  You must obey the GNU General Public License in
+* all respects for all other code used.  Additionally, the Source.Python
+* Development Team grants this exception to all derivative works.
+*/
+
+// --------------------------------------------------------
+// Includes
+// --------------------------------------------------------
+#include <cstring>
+
+#include "sp_python.h"
+#include "sp_main.h"
+#include "interface.h"
+#include "filesystem.h"
+#include "eiface.h"
+#include "igameevents.h"
+#include "convar.h"
+#include "Color.h"
+#include "vstdlib/random.h"
+#include "engine/IEngineTrace.h"
+#include "tier2/tier2.h"
+#include "game/server/iplayerinfo.h"
+#include "shake.h" // Linux compile fails without this.
+#include "game/shared/IEffects.h"
+#include "utilities/wrap_macros.h"
+#include "engine/IEngineSound.h"
+#include "engine/IEngineTrace.h"
+#include "public/toolframework/itoolentity.h"
+#include "dyncall.h"
+#include "networkstringtabledefs.h"
+#include "edict.h"
+#include "convar.h"
+#include "utilities/call_python.h"
+#include "vphysics_interface.h"
+#include "datacache/imdlcache.h"
+#include "ivoiceserver.h"
+#include "tier0/threadtools.h"
+
+#include "manager.h"
+
+#include "modules/listeners/listeners_manager.h"
+#include "utilities/conversions.h"
+#include "modules/entities/entities.h"
+#include "modules/entities/entities_entity.h"
+#include "modules/entities/entities_collisions.h"
+#include "modules/entities/entities_transmit.h"
+#include "modules/core/core.h"
+
+#ifdef _WIN32
+	#include "Windows.h"
+#endif
+
+#include "sp_hooks.h"
+
+//-----------------------------------------------------------------------------
+// Disable warnings.
+//-----------------------------------------------------------------------------
+#if defined(_WIN32)
+#	 pragma warning( disable : 4005 )
+#endif
+
+// memdbgon must be the last include file in a .cpp file!!!
+#include "tier0/memdbgon.h"
+
+//-----------------------------------------------------------------------------
+// Interfaces from the engine
+//-----------------------------------------------------------------------------
+IVEngineServer*			engine				= NULL; // helper functions (messaging clients, loading content, making entities, running commands, etc)
+IGameEventManager2*		gameeventmanager	= NULL; // game events interface
+IPlayerInfoManager*		playerinfomanager	= NULL; // game dll interface to interact with players
+IBotManager*			botmanager			= NULL; // game dll interface to interact with bots
+IServerPluginHelpers*	helpers				= NULL; // special 3rd party plugin helpers from the engine
+IUniformRandomStream*	randomStr			= NULL;
+IEngineTrace*			enginetrace			= NULL;
+IEngineSound*			enginesound			= NULL;
+CGlobalVars*			gpGlobals			= NULL;
+IFileSystem*			filesystem			= NULL;
+IServerGameDLL*			servergamedll		= NULL;
+IServerGameClients*		servergameclients	= NULL;
+IServerTools*			servertools			= NULL;
+IServerGameEnts*		gameents			= NULL; // Interface to get at server entities
+IPhysics*				physics				= NULL;
+IPhysicsCollision*		physcollision		= NULL;
+IPhysicsSurfaceProps*	physprops			= NULL;
+IMDLCache*				modelcache			= NULL;
+IVoiceServer*			voiceserver			= NULL;
+INetworkStringTableContainer* networkstringtable = NULL;
+
+//-----------------------------------------------------------------------------
+// External globals
+//-----------------------------------------------------------------------------
+extern ICvar* g_pCVar;
+
+//-----------------------------------------------------------------------------
+// Extern functions
+//-----------------------------------------------------------------------------
+extern void InitCommands();
+extern void ClearAllCommands();
+extern PLUGIN_RESULT DispatchClientCommand(edict_t *pEntity, const CCommand &command);
+extern CConVarChangedListenerManager* GetOnConVarChangedListenerManager();
+extern CServerOutputListenerManager* GetOnServerOutputListenerManager();
+
+//-----------------------------------------------------------------------------
+// The plugin is a static singleton that is exported as an interface
+//-----------------------------------------------------------------------------
+CSourcePython g_SourcePythonPlugin;
+EXPOSE_SINGLE_INTERFACE_GLOBALVAR(CSourcePython, IServerPluginCallbacks, INTERFACEVERSION_ISERVERPLUGINCALLBACKS, g_SourcePythonPlugin );
+
+//-----------------------------------------------------------------------------
+// Interface helper class.
+//-----------------------------------------------------------------------------
+struct InterfaceHelper_t
+{
+	const char* szInterface;
+	void**		pGlobal;
+};
+
+//-----------------------------------------------------------------------------
+// We need all of these interfaces in order to function.
+//-----------------------------------------------------------------------------
+InterfaceHelper_t gEngineInterfaces[] = {
+	{INTERFACEVERSION_VENGINESERVER, (void **)&engine},
+	{INTERFACEVERSION_GAMEEVENTSMANAGER2, (void **)&gameeventmanager},
+	{INTERFACEVERSION_ISERVERPLUGINHELPERS, (void **)&helpers},
+	{INTERFACEVERSION_ENGINETRACE_SERVER, (void **)&enginetrace},
+	{IENGINESOUND_SERVER_INTERFACE_VERSION, (void **)&enginesound},
+	{VENGINE_SERVER_RANDOM_INTERFACE_VERSION, (void **)&randomStr},
+	{FILESYSTEM_INTERFACE_VERSION, (void **)&filesystem},
+	{INTERFACENAME_NETWORKSTRINGTABLESERVER, (void **)&networkstringtable},
+	{VPHYSICS_INTERFACE_VERSION, (void **)&physics},
+	{VPHYSICS_COLLISION_INTERFACE_VERSION, (void **)&physcollision},
+	{VPHYSICS_SURFACEPROPS_INTERFACE_VERSION, (void **)&physprops},
+	{MDLCACHE_INTERFACE_VERSION, (void **)&modelcache},
+	{INTERFACEVERSION_VOICESERVER, (void **)&voiceserver},
+
+	{NULL, NULL}
+};
+
+InterfaceHelper_t gGameInterfaces[] = {
+	{INTERFACEVERSION_PLAYERINFOMANAGER, (void **)&playerinfomanager},
+	{INTERFACEVERSION_PLAYERBOTMANAGER, (void **)&botmanager},
+	{INTERFACEVERSION_SERVERGAMEDLL, (void **)&servergamedll},
+	{INTERFACEVERSION_SERVERGAMECLIENTS, (void **)&servergameclients},
+	{VSERVERTOOLS_INTERFACE_VERSION, (void **)&servertools},
+	{INTERFACEVERSION_SERVERGAMEENTS, (void **)&gameents},
+	{NULL, NULL}
+};
+
+
+//-----------------------------------------------------------------------------
+// Get all engine interfaces.
+//-----------------------------------------------------------------------------
+bool GetInterfaces( InterfaceHelper_t* pInterfaceList, CreateInterfaceFn factory )
+{
+	InterfaceHelper_t* pInterface = pInterfaceList;
+	while( pInterface->szInterface )
+	{
+		void** pGlobal = pInterface->pGlobal;
+
+		// Get the interface from the given factory.
+		*pGlobal = factory(pInterface->szInterface, NULL);
+
+		// If it's not valid, bail out.
+		if( *pGlobal ) {
+			DevMsg(1, MSG_PREFIX "Interface %s at %x\n", pInterface->szInterface, *pGlobal);
+		} else {
+			Warning(MSG_PREFIX "Could not retrieve interface %s\n", pInterface->szInterface);
+			return false;
+		}
+
+		pInterface++;
+	}
+
+	return true;
+}
+
+
+//-----------------------------------------------------------------------------
+// Purpose: constructor/destructor
+//-----------------------------------------------------------------------------
+CSourcePython::CSourcePython()
+{
+	m_iClientCommandIndex = 0;
+	m_pOldMDLCacheNotifier = NULL;
+}
+
+CSourcePython::~CSourcePython()
+{
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called when the plugin is loaded, load the interface we need from the engine
+//-----------------------------------------------------------------------------
+bool CSourcePython::Load(	CreateInterfaceFn interfaceFactory, CreateInterfaceFn gameServerFactory )
+{
+#if defined(ENGINE_CSGO) || defined(ENGINE_BLADE)
+	DevMsg(1, MSG_PREFIX "Connecting interfaces...\n");
+	ConnectInterfaces(&interfaceFactory, 1);
+#else
+	DevMsg(1, MSG_PREFIX "Connecting tier1 libraries...\n");
+	ConnectTier1Libraries( &interfaceFactory, 1 );
+
+	//DevMsg(1, MSG_PREFIX "Connecting tier2 libraries...\n");
+	//ConnectTier2Libraries( &interfaceFactory, 2 );
+#endif
+
+	// Get all engine interfaces.
+	DevMsg(1, MSG_PREFIX "Retrieving engine interfaces...\n");
+	if( !GetInterfaces(gEngineInterfaces, interfaceFactory) ) {
+		return false;
+	}
+
+	// Get all game interfaces.
+	DevMsg(1, MSG_PREFIX "Retrieving game interfaces...\n");
+	if( !GetInterfaces(gGameInterfaces, gameServerFactory) ) {
+		return false;
+	}
+	
+	DevMsg(1, MSG_PREFIX "Retrieving global variables...\n");
+	gpGlobals = playerinfomanager->GetGlobalVars();
+	if (!gpGlobals) {
+		Msg(MSG_PREFIX "Could retrieve global variables.\n");
+		return false;
+	}
+	
+	DevMsg(1, MSG_PREFIX "Initializing mathlib...\n");
+	MathLib_Init( 2.2f, 2.2f, 0.0f, 2.0f );
+
+	DevMsg(1, MSG_PREFIX "Initializing server and say commands...\n");
+	InitCommands();
+
+	// Initialize python
+	DevMsg(1, MSG_PREFIX "Initializing python...\n");
+	if( !g_PythonManager.Initialize() ) {
+		Msg(MSG_PREFIX "Could not initialize python.\n");
+		return false;
+	}
+
+#ifdef SOURCEPYTHON_X86_64
+	// SetCacheNotify does not expose the previous notifier. Discover its slot
+	// from the single pointer changed in a bounded snapshot of the interface.
+	const size_t cacheSnapshotSize = 256;
+	unsigned char cacheSnapshot[cacheSnapshotSize];
+	memcpy(cacheSnapshot, modelcache, cacheSnapshotSize);
+
+	DevMsg(1, MSG_PREFIX "Setting the new cache notifier...\n");
+	modelcache->SetCacheNotify(this);
+
+	for (size_t offset = 0; offset + sizeof(void*) <= cacheSnapshotSize;
+		offset += sizeof(void*)) {
+		IMDLCacheNotify* currentNotifier = NULL;
+		memcpy(&currentNotifier,
+			reinterpret_cast<unsigned char*>(modelcache) + offset,
+			sizeof(currentNotifier));
+		if (currentNotifier != this)
+			continue;
+
+		memcpy(&m_pOldMDLCacheNotifier, cacheSnapshot + offset,
+			sizeof(m_pOldMDLCacheNotifier));
+		break;
+	}
+#else
+	// TODO: Don't hardcode the 64 bytes offset
+#ifdef ENGINE_LEFT4DEAD2
+	#define CACHE_NOTIFY_OFFSET 68
+#else
+	#define CACHE_NOTIFY_OFFSET 64
+#endif
+
+	DevMsg(1, MSG_PREFIX "Retrieving the current cache notifier...\n");
+	m_pOldMDLCacheNotifier = *(IMDLCacheNotify **)(((Addr_t) modelcache) + CACHE_NOTIFY_OFFSET);
+
+	DevMsg(1, MSG_PREFIX "Setting the new cache notifier...\n");
+	modelcache->SetCacheNotify(this);
+#endif
+
+	// DIAGNOSTIC BISECTION - 2026-09-29. Not a fix; see the note below.
+	//
+	// The hook tracer identified the function hooked immediately before the
+	// server dies: server.dll+0x3107A0, reached through the gamedata key
+	// "run_command", i.e. CBasePlayer::PlayerRunCommand. It is hooked when the
+	// first bot entity appears, and the server dies on the first tick that
+	// calls it with a second bot in the server. Its convention is never freed
+	// and still holds a valid x64MsWin64 vtable in every sample taken up to
+	// 120 ms before the fault, so the ownership path is exonerated and
+	// "the last thing that happened was this hook" is all that is left.
+	//
+	// RESULT: with these two lines commented out, the same scenario survives
+	// 240 seconds with bots in the server. With them enabled it dies in 15 to
+	// 36 seconds. So the hook is the cause - but not why, and the two lines
+	// are therefore restored, because a build whose run_command listeners
+	// never fire is a missing feature rather than a fix.
+	//
+	// Still unexplained: the convention is healthy in every sample taken up to
+	// 120 ms before the fault, and nothing in SP frees it.
+	SpHookTraceSetMainThreadId(GetCurrentThreadId());
+
+	// The gamedata key to hook, switchable so the control experiment needs
+	// only one build. See the note at the top of this block.
+	const char* szHookFunc = getenv("SP_HOOK_TEST_FUNC");
+	if (!szHookFunc || !*szHookFunc)
+		szHookFunc = "run_command";
+	Msg(MSG_PREFIX "Entity hook target: %s\n", szHookFunc);
+
+	g_EntityHooks.push_back(new PlayerHook(
+		szHookFunc,
+		(HookHandlerFn*) (void*) &PrePlayerRunCommand,
+		HOOKTYPE_PRE));
+
+	g_EntityHooks.push_back(new PlayerHook(
+		szHookFunc,
+		(HookHandlerFn*) (void*) &PrePlayerRunCommand,
+		HOOKTYPE_POST));
+	//
+	InitHooks();
+	
+	Msg(MSG_PREFIX "Loaded successfully.\n");
+	return true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called when the plugin is unloaded (turned off)
+//-----------------------------------------------------------------------------
+void CSourcePython::Unload( void )
+{
+	Msg(MSG_PREFIX "Unloading...\n");
+
+	DevMsg(1, MSG_PREFIX "Resetting cache notifier...\n");
+	modelcache->SetCacheNotify(m_pOldMDLCacheNotifier);
+
+	DevMsg(1, MSG_PREFIX "Shutting down python...\n");
+	g_PythonManager.Shutdown();
+
+	DevMsg(1, MSG_PREFIX "Clearing convar changed listener...\n");
+	GetOnConVarChangedListenerManager()->clear();
+
+	DevMsg(1, MSG_PREFIX "Clearing server output listeners...\n");
+	GetOnServerOutputListenerManager()->clear();
+
+	DevMsg(1, MSG_PREFIX "Unhooking all functions...\n");
+	GetHookManager()->UnhookAllFunctions();
+
+	DevMsg(1, MSG_PREFIX "Clearing all commands...\n");
+	ClearAllCommands();
+
+	DevMsg(1, MSG_PREFIX "Unregistering ConVar...\n");
+	ConVar_Unregister( );
+
+	// New in CSGO...
+#if defined(ENGINE_CSGO) || defined(ENGINE_BLADE)
+	DevMsg(1, MSG_PREFIX "Disconnecting interfaces...\n");
+	DisconnectInterfaces();
+#else
+	//DevMsg(1, MSG_PREFIX "Disconnecting tier2 libraries...\n");
+	//DisconnectTier2Libraries( );
+
+	DevMsg(1, MSG_PREFIX "Disconnecting tier1 libraries...\n");
+	DisconnectTier1Libraries( );
+#endif
+
+	Msg(MSG_PREFIX "Unloaded successfully.\n");
+
+#ifdef _WIN32
+	// This "fixes" a crash after SP has been unloaded.
+	Sleep(1000);
+#endif
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called when the plugin is paused (i.e should stop running but isn't unloaded)
+//-----------------------------------------------------------------------------
+void CSourcePython::Pause( void )
+{
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called when the plugin is unpaused (i.e should start executing again)
+//-----------------------------------------------------------------------------
+void CSourcePython::UnPause( void )
+{
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: the name of this plugin, returned in "plugin_print" command
+//-----------------------------------------------------------------------------
+const char *CSourcePython::GetPluginDescription( void )
+{
+	return "Source.Python, (C) 2012-2025, Source.Python Team.";
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called on level start
+//-----------------------------------------------------------------------------
+void CSourcePython::LevelInit( char const *pMapName )
+{
+	CALL_LISTENERS(OnLevelInit, pMapName);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called on level start, when the server is ready to accept client connections
+//		edictCount is the number of entities in the level, clientMax is the max client count
+//-----------------------------------------------------------------------------
+void CSourcePython::ServerActivate( edict_t *pEdictList, int edictCount, int clientMax )
+{
+	list edicts;
+	for(int i=0; i < edictCount; i++)
+		edicts.append(pEdictList[i]);
+	
+	CALL_LISTENERS(OnServerActivate, edicts, edictCount, clientMax);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called once per server frame, do recurring work here (like checking for timeouts)
+//-----------------------------------------------------------------------------
+void CSourcePython::GameFrame( bool simulating )
+{
+	CALL_LISTENERS(OnTick);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called on level end (as the server is shutting down or going to a new map)
+//-----------------------------------------------------------------------------
+void CSourcePython::LevelShutdown( void ) // !!!!this can get called multiple times per map change
+{
+	CALL_LISTENERS(OnLevelShutdown);
+
+	// Cleanup active collision rules.
+	static CCollisionManager *pCollisionManager = GetCollisionManager();
+	pCollisionManager->OnLevelShutdown();
+
+	// Cleanup active transmission rules.
+	static CTransmitManager *pTransmitManager = GetTransmitManager();
+	pTransmitManager->OnLevelShutdown();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called when a client spawns into a server (i.e as they begin to play)
+//-----------------------------------------------------------------------------
+void CSourcePython::ClientActive( edict_t *pEntity )
+{
+	unsigned int iEntityIndex;
+	if (!IndexFromEdict(pEntity, iEntityIndex))
+		return;
+
+	CALL_LISTENERS(OnClientActive, iEntityIndex);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called when a client leaves a server (or is timed out)
+//-----------------------------------------------------------------------------
+void CSourcePython::ClientDisconnect( edict_t *pEntity )
+{
+	unsigned int iEntityIndex;
+	if (!IndexFromEdict(pEntity, iEntityIndex))
+		return;
+
+	CALL_LISTENERS(OnClientDisconnect, iEntityIndex);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called on
+//-----------------------------------------------------------------------------
+void CSourcePython::ClientPutInServer( edict_t *pEntity, char const *playername )
+{
+	CALL_LISTENERS(OnClientPutInServer, ptr(pEntity), playername);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called on level start
+//-----------------------------------------------------------------------------
+void CSourcePython::SetCommandClient( int index )
+{
+	m_iClientCommandIndex = index;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called on level start
+//-----------------------------------------------------------------------------
+void CSourcePython::ClientSettingsChanged( edict_t *pEdict )
+{
+	unsigned int iEntityIndex;
+	if (!IndexFromEdict(pEdict, iEntityIndex))
+		return;
+
+	CALL_LISTENERS(OnClientSettingsChanged, iEntityIndex);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called when a client joins a server
+//-----------------------------------------------------------------------------
+PLUGIN_RESULT CSourcePython::ClientConnect( bool *bAllowConnect, edict_t *pEntity, const char *pszName, const char *pszAddress, char *reject, int maxrejectlen )
+{
+	CPointer allowConnect = CPointer((Addr_t) bAllowConnect);
+	CPointer rejectMessage = CPointer((Addr_t) reject);
+	CALL_LISTENERS(OnClientConnect, allowConnect, ptr(pEntity), pszName, pszAddress, rejectMessage, maxrejectlen);
+	return PLUGIN_OVERRIDE;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called when a client is authenticated
+//-----------------------------------------------------------------------------
+PLUGIN_RESULT CSourcePython::NetworkIDValidated( const char *pszUserName, const char *pszNetworkID )
+{
+	CALL_LISTENERS(OnNetworkidValidated, pszUserName, pszNetworkID);
+	return PLUGIN_CONTINUE;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: called when a cvar value query is finished
+//-----------------------------------------------------------------------------
+void CSourcePython::OnQueryCvarValueFinished( QueryCvarCookie_t iCookie, edict_t *pPlayerEntity,
+	EQueryCvarValueStatus eStatus, const char *pCvarName, const char *pCvarValue )
+{
+	PythonLog(4, "Cvar query (cookie: %d, status: %d) - name: %s, value: %s", iCookie, eStatus, pCvarName, pCvarValue );
+	unsigned int iEntityIndex;
+	if (!IndexFromEdict(pPlayerEntity, iEntityIndex))
+		return;
+
+	CALL_LISTENERS(OnQueryCvarValueFinished, (int) iCookie, iEntityIndex, eStatus, pCvarName, pCvarValue);
+}
+
+//-----------------------------------------------------------------------------
+// Orangebox.
+//-----------------------------------------------------------------------------
+PLUGIN_RESULT CSourcePython::ClientCommand( edict_t *pEntity, const CCommand &args )
+{
+	return DispatchClientCommand(pEntity, args);
+}
+
+//-----------------------------------------------------------------------------
+// Alien Swarm.
+//-----------------------------------------------------------------------------
+#if defined(ENGINE_CSGO) || defined(ENGINE_BLADE)
+void CSourcePython::ClientFullyConnect( edict_t *pEntity )
+{
+	unsigned int iEntityIndex;
+	if (!IndexFromEdict(pEntity, iEntityIndex))
+		return;
+
+	CALL_LISTENERS(OnClientFullyConnect, iEntityIndex);
+}
+#endif
+
+#if defined(ENGINE_CSGO) || defined(ENGINE_BMS) || defined(ENGINE_BLADE) || defined(ENGINE_ORANGEBOX)
+void CSourcePython::OnEdictAllocated( edict_t *edict )
+{
+	unsigned int iEntityIndex;
+	if (!IndexFromEdict(edict, iEntityIndex))
+		return;
+
+	CALL_LISTENERS(OnEdictAllocated, iEntityIndex);
+}
+
+void CSourcePython::OnEdictFreed( const edict_t *edict )
+{
+	CALL_LISTENERS(OnEdictFreed, ptr(edict));
+}
+#endif
+
+#ifdef ENGINE_BMS
+void CSourcePython::OnEntityPreSpawned( CBaseEntity *pEntity )
+{
+	CALL_LISTENERS(OnEntityPreSpawned, ptr((CBaseEntityWrapper*) pEntity));
+
+	GET_LISTENER_MANAGER(OnNetworkedEntityPreSpawned, on_networked_entity_pre_spawned_manager);
+	if (!on_networked_entity_pre_spawned_manager->GetCount())
+		return;
+
+	unsigned int uiIndex;
+	if (!IndexFromBaseEntity(pEntity, uiIndex))
+		return;
+
+	static object Entity = import("entities").attr("entity").attr("Entity");
+	CALL_LISTENERS_WITH_MNGR(on_networked_entity_pre_spawned_manager, Entity(uiIndex));
+}
+#endif
+
+void CSourcePython::OnEntityCreated( CBaseEntity *pEntity )
+{
+	edict_t *pEdict;
+	if (EdictFromBaseEntity(pEntity, pEdict)) {
+		IServerUnknown* pServerUnknown = pEdict->GetUnknown();
+		if (pServerUnknown)
+			pEdict->m_pNetworkable = pServerUnknown->GetNetworkable();
+	}
+
+	InitHooks(pEntity);
+
+	CALL_LISTENERS(OnEntityCreated, ptr((CBaseEntityWrapper*) pEntity));
+
+	unsigned int uiIndex;
+	if (!IndexFromBaseEntity(pEntity, uiIndex))
+		return;
+
+	static object Entity = import("entities").attr("entity").attr("Entity");
+	object oEntity = Entity(uiIndex);
+	
+	GET_LISTENER_MANAGER(OnNetworkedEntityCreated, on_networked_entity_created_manager);
+	if (on_networked_entity_created_manager->GetCount()) {
+		CALL_LISTENERS_WITH_MNGR(on_networked_entity_created_manager, oEntity);
+	}
+
+	static CCollisionManager *pCollisionManager = GetCollisionManager();
+	pCollisionManager->OnNetworkedEntityCreated(oEntity);
+}
+
+void CSourcePython::OnEntitySpawned( CBaseEntity *pEntity )
+{
+	CALL_LISTENERS(OnEntitySpawned, ptr((CBaseEntityWrapper*) pEntity));
+
+	GET_LISTENER_MANAGER(OnNetworkedEntitySpawned, on_networked_entity_spawned_manager);
+	if (!on_networked_entity_spawned_manager->GetCount())
+		return;
+
+	unsigned int uiIndex;
+	if (!IndexFromBaseEntity(pEntity, uiIndex))
+		return;
+
+	static object Entity = import("entities").attr("entity").attr("Entity");
+	CALL_LISTENERS_WITH_MNGR(on_networked_entity_spawned_manager, Entity(uiIndex));
+}
+
+void CSourcePython::OnEntityDeleted( CBaseEntity *pEntity )
+{
+	// #455 - Temporarily rebind ourself to our edict if needed.
+	bool bRebound = false;
+	edict_t *pEdict;
+	if (EdictFromBaseEntity(pEntity, pEdict) && !pEdict->GetUnknown()) {
+		reinterpret_cast<CEdictWrapper *>(pEdict)->SetUnknown((IServerUnknown *)pEntity);
+		bRebound = true;
+	}
+
+	CALL_LISTENERS(OnEntityDeleted, ptr((CBaseEntityWrapper*) pEntity));
+
+	unsigned int uiIndex;
+	if (!IndexFromBaseEntity(pEntity, uiIndex))
+		return;
+
+	GET_LISTENER_MANAGER(OnNetworkedEntityDeleted, on_networked_entity_deleted_manager);
+	if (on_networked_entity_deleted_manager->GetCount())
+	{
+		static object Entity = import("entities").attr("entity").attr("Entity");
+		CALL_LISTENERS_WITH_MNGR(on_networked_entity_deleted_manager, Entity(uiIndex));
+	}
+
+	// Invalidate the internal entity cache once all callbacks have been called.
+	static object _on_networked_entity_deleted = import("entities").attr("_base").attr("_on_networked_entity_deleted");
+	_on_networked_entity_deleted(uiIndex);
+
+	// Cleanup active collision rules.
+	static CCollisionManager *pCollisionManager = GetCollisionManager();
+	pCollisionManager->OnNetworkedEntityDeleted((CBaseEntityWrapper *)pEntity);
+
+	// Cleanup active transmission rules.
+	static CTransmitManager *pTransmitManager = GetTransmitManager();
+	pTransmitManager->OnNetworkedEntityDeleted((CBaseEntityWrapper *)pEntity, uiIndex);
+
+	if (bRebound) {
+		reinterpret_cast<CEdictWrapper *>(pEdict)->SetUnknown(NULL);
+	}
+}
+
+void CSourcePython::OnDataLoaded( MDLCacheDataType_t type, MDLHandle_t handle )
+{
+	if (m_pOldMDLCacheNotifier)
+		m_pOldMDLCacheNotifier->OnDataLoaded(type, handle);
+
+	CALL_LISTENERS(OnDataLoaded, type, handle);
+}
+
+void CSourcePython::OnDataUnloaded( MDLCacheDataType_t type, MDLHandle_t handle )
+{
+	if (m_pOldMDLCacheNotifier)
+		m_pOldMDLCacheNotifier->OnDataUnloaded(type, handle);
+
+	CALL_LISTENERS(OnDataUnloaded, type, handle);
+}
+	
+#if defined(ENGINE_CSGO) || defined(ENGINE_BLADE)
+void CSourcePython::OnCombinerPreCache(MDLCacheDataType_t type, MDLHandle_t handle )
+{
+	if (m_pOldMDLCacheNotifier)
+		m_pOldMDLCacheNotifier->OnCombinerPreCache(type, handle);
+
+	CALL_LISTENERS(OnCombinerPreCache, type, handle);
+}
+
+bool CSourcePython::ShouldSupressLoadWarning(MDLHandle_t handle)
+{
+	bool result = false;
+	if (m_pOldMDLCacheNotifier)
+		result = m_pOldMDLCacheNotifier->ShouldSupressLoadWarning(handle);
+
+	return result;
+}
+
+bool CSourcePython::BNetworkCryptKeyCheckRequired( uint32 unFromIP, uint16 usFromPort,
+	uint32 unAccountIdProvidedByClient, bool bClientWantsToUseCryptKey )
+{
+	return false;
+}
+
+bool CSourcePython::BNetworkCryptKeyValidate( uint32 unFromIP, uint16 usFromPort, uint32 unAccountIdProvidedByClient,
+	int nEncryptionKeyIndexFromClient, int numEncryptedBytesFromClient, byte *pbEncryptedBufferFromClient,
+	byte *pbPlainTextKeyForNetchan )
+{
+	return false;
+}
+#endif

@@ -1,0 +1,5 @@
+﻿=== all DWORD refs to COL RVA 0x5E4388 (vtable[-1] candidates) ===
+  file 0x5E359C rva 0x5E439C sec .rdata  next16: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+=== all QWORD refs to setter VA 0x1801B52A0 (the 88 51 10 C3 fn) ===
+  slot file 0x4E3320 rva 0x4E4120 sec .rdata

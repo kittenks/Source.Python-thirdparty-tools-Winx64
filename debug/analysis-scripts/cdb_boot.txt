@@ -1,0 +1,97 @@
+Opened log file 'D:\boost-build\cdb_boot.txt'
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*D:\boost-build\syms*https://msdl.microsoft.com/download/symbols
+
+Microsoft (R) Windows Debugger Version 10.0.22621.755 AMD64
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+CommandLine: D:\Counter-Strike-Source\srcds_win64.exe -console -game cstrike -insecure -nomaster -norestart -port 27027 +maxplayers 12 +map de_dust2 
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script successfully loaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'
+
+************* Path validation summary **************
+Response                         Time (ms)     Location
+Deferred                                       srv*D:\boost-build\syms*https://msdl.microsoft.com/download/symbols
+Symbol search path is: srv*D:\boost-build\syms*https://msdl.microsoft.com/download/symbols
+Executable search path is: 
+ModLoad: 00007ff7`b54b0000 00007ff7`b54ea000   srcds_win64.exe
+ModLoad: 00007ffd`b5560000 00007ffd`b5761000   ntdll.dll
+ModLoad: 00007ffd`b4c50000 00007ffd`b4d0c000   C:\Windows\System32\KERNEL32.DLL
+ModLoad: 00007ffd`b2e10000 00007ffd`b317e000   C:\Windows\System32\KERNELBASE.dll
+ModLoad: 00007ffd`96ee0000 00007ffd`96fa0000   D:\Program Files (x86)\doubao\app\sbox\x64\aiep_sbox.dll
+ModLoad: 00007ffd`b3bd0000 00007ffd`b3d75000   C:\Windows\System32\USER32.dll
+ModLoad: 00007ffd`b2b20000 00007ffd`b2b46000   C:\Windows\System32\win32u.dll
+ModLoad: 00007ffd`b4260000 00007ffd`b428b000   C:\Windows\System32\GDI32.dll
+ModLoad: 00007ffd`b3380000 00007ffd`b3494000   C:\Windows\System32\gdi32full.dll
+ModLoad: 00007ffd`b2d70000 00007ffd`b2e10000   C:\Windows\System32\msvcp_win.dll
+ModLoad: 00007ffd`b3180000 00007ffd`b3290000   C:\Windows\System32\ucrtbase.dll
+ModLoad: 00007ffd`96fa0000 00007ffd`97030000   D:\Program Files (x86)\doubao\app\sbox\x64\aiep_ipc.dll
+ModLoad: 00007ffd`b3750000 00007ffd`b3781000   C:\Windows\System32\IMM32.DLL
+[Norm][alpc_implv2.cpp:276] need AlpcConnectToServer[Norm][alpc_implv2.cpp:301] At [1790791355834041] send connect requset to server[port name:\RPC Control\Host_Ipc_agent_infra_shell_1b34cfdb-082f-4e9c-a11f-5226f690c0e5], client exe name:srcds_win64.exe, PID:6884 TID:6896ModLoad: 00007ffd`94020000 00007ffd`94232000   C:\Windows\SYSTEM32\dbghelp.dll
+[Norm][alpc_implv2.cpp:312] [Connect to server success] At [1790791355834601] recv reply from server, server exe name:Doubao.exe, PID:864 TID:6260[Info][alpc_implv2.cpp:494] At [1790791355836837] recv connect req, client exe name:Doubao.exe, it's server port name:\RPC Control\Host_Ipc_agent_infra_shell_1b34cfdb-082f-4e9c-a11f-5226f690c0e5, PID:864, TID:2824, AuthResult:1ModLoad: 00007ffd`8df00000 00007ffd`8e0cb000   D:\Counter-Strike-Source\bin\x64\dedicated.dll
+ModLoad: 00007ffd`b44f0000 00007ffd`b4c4a000   C:\Windows\System32\SHELL32.dll
+ModLoad: 00007ffd`a8380000 00007ffd`a8389000   C:\Windows\SYSTEM32\WSOCK32.dll
+ModLoad: 00007ffd`b5350000 00007ffd`b53f3000   C:\Windows\System32\msvcrt.dll
+ModLoad: 00007ffd`b4df0000 00007ffd`b4e61000   C:\Windows\System32\WS2_32.dll
+ModLoad: 00007ffd`b3990000 00007ffd`b3aaf000   C:\Windows\System32\RPCRT4.dll
+ModLoad: 00007ffd`a2650000 00007ffd`a269d000   D:\Counter-Strike-Source\bin\x64\steam_api64.dll
+ModLoad: 00007ffd`b38e0000 00007ffd`b398e000   C:\Windows\System32\ADVAPI32.dll
+ModLoad: 00007ffd`b4e70000 00007ffd`b4f0f000   C:\Windows\System32\sechost.dll
+ModLoad: 00007ffd`95410000 00007ffd`9547f000   D:\Counter-Strike-Source\bin\x64\tier0.dll
+ModLoad: 00007ffd`93c20000 00007ffd`93d0e000   D:\Counter-Strike-Source\bin\x64\vstdlib.dll
+ModLoad: 00007ffd`9f960000 00007ffd`9f987000   C:\Windows\SYSTEM32\WINMM.dll
+ModLoad: 00007ffd`b2260000 00007ffd`b226c000   C:\Windows\System32\CRYPTBASE.DLL
+ModLoad: 00007ffd`b3290000 00007ffd`b330d000   C:\Windows\System32\bcryptPrimitives.dll
+ModLoad: 00007ffd`a2420000 00007ffd`a2450000   C:\Windows\SYSTEM32\dbgcore.DLL
+ModLoad: 00007ffd`b4290000 00007ffd`b437a000   C:\Windows\System32\shcore.dll
+ModLoad: 00007ffd`b15f0000 00007ffd`b1607000   C:\Windows\SYSTEM32\kernel.appcore.dll
+ModLoad: 00007ffd`84e10000 00007ffd`85630000   d:\counter-strike-source\bin\x64\engine.dll
+ModLoad: 00007ffd`b4390000 00007ffd`b44c5000   C:\Windows\System32\ole32.dll
+ModLoad: 00007ffd`b4fd0000 00007ffd`b5341000   C:\Windows\System32\combase.dll
+ModLoad: 00007ffd`a0350000 00007ffd`a084d000   C:\Windows\SYSTEM32\WININET.dll
+ModLoad: 00007ffd`a2580000 00007ffd`a25c5000   d:\counter-strike-source\bin\x64\inputsystem.dll
+ModLoad: 00007ffd`89360000 00007ffd`895cc000   d:\counter-strike-source\bin\x64\SDL2.dll
+ModLoad: 00007ffd`b4d10000 00007ffd`b4de7000   C:\Windows\System32\OLEAUT32.dll
+ModLoad: 00007ffd`b3de0000 00007ffd`b4251000   C:\Windows\System32\SETUPAPI.dll
+ModLoad: 00007ffd`affe0000 00007ffd`affea000   C:\Windows\SYSTEM32\VERSION.dll
+ModLoad: 00007ffd`b2730000 00007ffd`b277c000   C:\Windows\SYSTEM32\cfgmgr32.DLL
+ModLoad: 00007ffd`91d80000 00007ffd`91ec1000   d:\counter-strike-source\bin\x64\materialsystem.dll
+ModLoad: 00007ffd`849d0000 00007ffd`84e0d000   d:\counter-strike-source\bin\x64\studiorender.dll
+ModLoad: 00007ffd`89860000 00007ffd`899c6000   d:\counter-strike-source\bin\x64\vphysics.dll
+ModLoad: 00007ffd`93930000 00007ffd`93994000   d:\counter-strike-source\bin\x64\datacache.dll
+ModLoad: 00007ffd`93870000 00007ffd`93929000   d:\counter-strike-source\bin\x64\vgui2.dll
+ModLoad: 00007ffd`b54a0000 00007ffd`b54ff000   C:\Windows\System32\SHLWAPI.dll
+ModLoad: 00007ffd`910f0000 00007ffd`911a1000   d:\counter-strike-source\bin\x64\libfontconfig-1.dll
+ModLoad: 00007ffd`890a0000 00007ffd`891f0000   d:\counter-strike-source\bin\x64\libfreetype-6.dll
+ModLoad: 00007ffd`88e80000 00007ffd`8909c000   d:\counter-strike-source\bin\x64\libxml2-2.dll
+ModLoad: 00007ffd`86200000 00007ffd`863aa000   d:\counter-strike-source\bin\x64\libharfbuzz-0.dll
+ModLoad: 00007ffd`b0db0000 00007ffd`b0e54000   C:\Windows\system32\uxtheme.dll
+ModLoad: 00007ffd`99f10000 00007ffd`99fb6000   C:\Program Files\Common Files\microsoft shared\ink\tiptsf.dll
+ModLoad: 00007ffd`89790000 00007ffd`89851000   d:\counter-strike-source\bin\x64\vscript.dll
+Using shader api: shaderapiempty.dll
+ModLoad: 00007ffd`a2cd0000 00007ffd`a2cfa000   D:\Counter-Strike-Source\bin\x64\shaderapiempty.dll
+ModLoad: 00007ffd`b1d70000 00007ffd`b1e4e000   C:\Windows\SYSTEM32\dnsapi.dll
+ModLoad: 00007ffd`b1d40000 00007ffd`b1d6d000   C:\Windows\SYSTEM32\IPHLPAPI.DLL
+ModLoad: 00007ffd`b44e0000 00007ffd`b44e9000   C:\Windows\System32\NSI.dll
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\atlmfc.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\ObjectiveC.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\concurrency.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\cpp_rest.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\stl.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Data.Json.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Geolocation.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Devices.Sensors.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\Windows.Media.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\windows.natvis'
+NatVis script unloaded from 'D:\Windows Kits\10\Debuggers\x64\Visualizers\winrt.natvis'

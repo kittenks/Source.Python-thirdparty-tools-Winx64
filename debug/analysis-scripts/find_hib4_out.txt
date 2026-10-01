@@ -1,0 +1,52 @@
+﻿table head file=0x4E3320 rva=0x4E32A2 ; dword just before head (vtable[-1])=0x00000001
+setter (88 51 10 C3) is vt[0]
+   vt[ 0] RVA=0x1B52A0 <== SETTER 88 51 10 C3
+   vt[ 1] RVA=0x6CC60  <== SP hooks this as SetServerHibernation
+   vt[ 2] RVA=0x6CC60
+   vt[ 3] RVA=0x1B5340
+   vt[ 4] RVA=0x1B5390
+   vt[ 5] RVA=0x48B60
+   vt[ 6] RVA=0x1B53B0
+   vt[ 7] RVA=0x6CC60
+   vt[ 8] RVA=0x1B53D0
+   vt[ 9] RVA=0x497B0
+   vt[10] RVA=0x61477263F6726553
+   vt[11] RVA=0x3231304ACC44656D
+   vt[12] RVA=0x-180000000
+   vt[13] RVA=0x6D45646CF56F5356
+   vt[14] RVA=0x32303070E5747469
+   vt[15] RVA=0x-180000000
+
+=== disasm vt[1] (the ACTUAL DynamicHooks target) ===
+       RVA=0x6CC60 bytes=f0 08 00 f3 0f 10 4c 24 24 48 8b cb 8b 93 f8 11 00 00 f3 0f 5c c8 f3 0f 11 4c
+          0x6CC60: f0 08 00       lock or byte ptr [rax], al
+          0x6CC63: f3 0f 10 4c 24 24 movss xmm1, dword ptr [rsp + 0x24]
+          0x6CC69: 48 8b cb       mov rcx, rbx
+          0x6CC6C: 8b 93 f8 11 00 00 mov edx, dword ptr [rbx + 0x11f8]
+          0x6CC72: f3 0f 5c c8    subss xmm1, xmm0
+          0x6CC76: f3 0f 11 4c 24 24 movss dword ptr [rsp + 0x24], xmm1
+          0x6CC7C: e8 13 f0 08 00 call 0x1800fbc94
+          0x6CC81: f3 0f 10 4c 24 20 movss xmm1, dword ptr [rsp + 0x20]
+          0x6CC87: 48 8b cb       mov rcx, rbx
+          0x6CC8A: 8b 93 fc 11 00 00 mov edx, dword ptr [rbx + 0x11fc]
+          0x6CC90: f3 0f 5c c8    subss xmm1, xmm0
+          0x6CC94: f3 0f 11 4c 24 20 movss dword ptr [rsp + 0x20], xmm1
+          0x6CC9A: e8 f5 ef 08 00 call 0x1800fbc94
+=== disasm vt[0] ===
+       RVA=0x1B52A0 bytes=0f b7 49 1a 33 ff 8b 43 08 3b c8 73 11 66 ff c1 0f b7 d5 0f b7 c9 3b c8 66 0f
+          0x1B52A0: 0f b7 49 1a    movzx ecx, word ptr [rcx + 0x1a]
+          0x1B52A4: 33 ff          xor edi, edi
+          0x1B52A6: 8b 43 08       mov eax, dword ptr [rbx + 8]
+          0x1B52A9: 3b c8          cmp ecx, eax
+          0x1B52AB: 73 11          jae 0x1801b52be
+          0x1B52AD: 66 ff c1       inc cx
+          0x1B52B0: 0f b7 d5       movzx edx, bp
+          0x1B52B3: 0f b7 c9       movzx ecx, cx
+=== disasm setter vt[0] ===
+       RVA=0x1B52A0 bytes=0f b7 49 1a 33 ff 8b 43 08 3b c8 73 11 66 ff c1 0f b7 d5 0f b7 c9 3b c8 66 0f
+          0x1B52A0: 0f b7 49 1a    movzx ecx, word ptr [rcx + 0x1a]
+          0x1B52A4: 33 ff          xor edi, edi
+          0x1B52A6: 8b 43 08       mov eax, dword ptr [rbx + 8]
+          0x1B52A9: 3b c8          cmp ecx, eax
+          0x1B52AB: 73 11          jae 0x1801b52be
+          0x1B52AD: 66 ff c1       inc cx
