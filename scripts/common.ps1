@@ -2,6 +2,14 @@
 # Dot-source from another script with:   . (Join-Path $PSScriptRoot 'common.ps1')
 $ErrorActionPreference = 'Stop'
 
+# vctip.exe is the MSVC build-telemetry probe that cl.exe spawns. On the
+# headless GitHub Actions Windows runners it occasionally inherits the build
+# output pipe and never exits, so the MSBuild/cl build hangs until the job
+# timeout (the runner then kills an orphan "vctip" process - observed on the
+# asmjit job). It is pure usage telemetry and has no effect on code generation,
+# so disable it process-wide; CMake-spawned MSBuild/cl children inherit this.
+$env:VCTIPDISABLE = '1'
+
 function Get-ToolsRoot {
     # scripts/ -> repository root
     [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
