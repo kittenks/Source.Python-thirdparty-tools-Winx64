@@ -45,15 +45,22 @@ function Compile-TranslationUnits {
     if ($MultiProcess) { $flags += '/MP' }
     $flags += @('/DWIN32', '/D_WINDOWS', '/DNDEBUG', '/DBOOST_ALL_NO_LIB',
         '/D_HAS_EXCEPTIONS=1', '/D_SCL_SECURE_NO_WARNINGS', '/D_CRT_SECURE_NO_WARNINGS', '/wd4996')
-    $flags += $ExtraDefines
+    if ($ExtraDefines) { $flags += $ExtraDefines }
     $flags += "/I$boost"
-    $flags += $ExtraInclude
+    if ($ExtraInclude) { $flags += $ExtraInclude }
 
     $objects = @()
     foreach ($source in $Sources) {
         $object = Join-Path $ObjectDirectory (([IO.Path]::GetFileNameWithoutExtension($source)) + '.obj')
-        & cl.exe @flags "$source" "/Fo$object"
-        if ($LASTEXITCODE -ne 0) { throw "cl.exe failed for $source (exit $LASTEXITCODE)" }
+        # Go through Invoke-Native: it echoes compiler output with Write-Host,
+        # which does NOT enter this function's success stream. A bare cl.exe call
+        # prints the source file name ("error_code.cpp"); that string would
+        # otherwise leak into the return value alongside the .obj paths and be
+        # handed to lib.exe, causing LNK1181 "cannot open input file
+        # 'error_code.cpp'". Invoke-Native also handles cl stderr warnings and
+        # the non-zero exit case.
+        Invoke-Native -FilePath 'cl.exe' -Arguments ($flags + @("$source", "/Fo$object")) `
+            -FailureMessage "cl.exe failed for $source"
         if (-not (Test-Path -LiteralPath $object)) { throw "Object not produced: $object" }
         $objects += $object
     }
@@ -63,8 +70,8 @@ function Compile-TranslationUnits {
 function New-StaticArchive {
     param([string]$LibraryName, [string[]]$Objects)
     $dest = Join-Path $out $LibraryName
-    & lib.exe /NOLOGO "/OUT:$dest" $Objects
-    if ($LASTEXITCODE -ne 0) { throw "lib.exe failed for $LibraryName (exit $LASTEXITCODE)" }
+    Invoke-Native -FilePath 'lib.exe' -Arguments (@('/NOLOGO', "/OUT:$dest") + @($Objects)) `
+        -FailureMessage "lib.exe failed for $LibraryName"
     if (-not (Test-Path -LiteralPath $dest)) { throw "$LibraryName was not produced." }
     Write-Host ("{0} built from {1} objects ({2:N0} bytes)" -f $LibraryName, $Objects.Count, (Get-Item $dest).Length)
 }

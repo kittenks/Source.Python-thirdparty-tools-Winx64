@@ -122,35 +122,42 @@ function Find-CMake {
 function Invoke-Native {
     param(
         [Parameter(Mandatory = $true)][string]$FilePath,
-        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][AllowNull()][AllowEmptyCollection()][string[]]$Arguments,
         [string]$FailureMessage = 'Native command failed.'
     )
-    # Native tools (cmake, cl, lib, msbuild) routinely write progress and
-    # warnings to stderr. Under $ErrorActionPreference='Stop' PowerShell turns
-    # the FIRST stderr line into a terminating NativeCommandError even when the
-    # process exits 0 (CMake policy/deprecation warnings are a real example on
-    # both CMake 3.x and 4.x). Run via Start-Process with stdout and stderr
-    # redirected to temp files, so PowerShell never wraps native stderr as
-    # ErrorRecord objects; echo both logs and decide solely on the exit code.
+    # Drop null/empty entries: callers sometimes build the argument array from
+    # optional parameters (e.g. an unset -ExtraInclude), and an empty element
+    # would fail string[] parameter binding or be passed as a bogus argument.
+    $Arguments = @($Arguments | Where-Object { $null -ne $_ -and "$_".Length -gt 0 })
+    # Run a native tool (cmake, cl, lib, msbuild) with stdout and stderr merged
+    # into a single temp file at the shell level and judge success solely from
+    # the exit code. Two pitfalls are deliberately avoided:
+    #   1. Under $ErrorActionPreference='Stop', Windows PowerShell turns the
+    #      first native stderr line into a terminating NativeCommandError even
+    #      when the process exits 0 (CMake policy/deprecation warnings trigger
+    #      this on CMake 3.x and 4.x). Setting Continue around the call makes
+    #      those non-terminating; pwsh 7 (the CI shell) does not raise them at
+    #      all.
+    #   2. Do NOT use Start-Process -RedirectStandardOutput/-RedirectStandardError
+    #      here. On a headless windows-2022 runner MSBuild spawns parallel
+    #      cl.exe children and the redirected pipes are not drained fast enough,
+    #      so the build blocks until the job times out (observed for dyncall and
+    #      asmjit). A file redirect hands every child a writable file handle
+    #      with no pipe back-pressure.
+    # The log is echoed via Write-Host so it never pollutes a caller's success
+    # stream / return value.
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    $outLog = [IO.Path]::GetTempFileName()
-    $errLog = [IO.Path]::GetTempFileName()
+    $log = [IO.Path]::GetTempFileName()
     $code = 0
     try {
-        $argString = ($Arguments | ForEach-Object {
-            $s = [string]$_
-            if ($s -match '\s') { '"' + $s + '"' } else { $s }
-        }) -join ' '
-        $p = Start-Process -FilePath $FilePath -ArgumentList $argString -NoNewWindow -Wait -PassThru `
-            -RedirectStandardOutput $outLog -RedirectStandardError $errLog
-        $code = $p.ExitCode
+        & $FilePath @Arguments > $log 2>&1
+        $code = $LASTEXITCODE
     }
     finally {
         $ErrorActionPreference = $previous
     }
-    if (Test-Path -LiteralPath $outLog) { Get-Content -LiteralPath $outLog | ForEach-Object { Write-Host $_ } }
-    if (Test-Path -LiteralPath $errLog) { Get-Content -LiteralPath $errLog | ForEach-Object { Write-Host $_ } }
-    Remove-Item -LiteralPath $outLog, $errLog -Force -ErrorAction SilentlyContinue
+    Get-Content -LiteralPath $log | ForEach-Object { Write-Host $_ }
+    Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue
     if ($code -ne 0) { throw "$FailureMessage (exit code $code)." }
 }
