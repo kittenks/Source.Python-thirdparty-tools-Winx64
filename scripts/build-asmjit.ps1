@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    # Path to an AsmJit 1.14.0 source tree (git tag 1.14.0).
+    # Path to the pinned AsmJit source tree (commit in manifests/versions.json;
+    # upstream has no tags and the pin selects the last ABI namespace v1_14).
     [Parameter(Mandatory = $true)][string]$Source,
     [string]$OutputDirectory = '',
     [string]$WorkDirectory = ''
@@ -20,16 +21,20 @@ New-CleanDirectory $WorkDirectory | Out-Null
 $out = New-CleanDirectory $OutputDirectory
 
 $cmake = Find-CMake
-# Static CRT (/MT) via CMP0091; static AsmJit; no test executables.
-& $cmake -S $src -B $WorkDirectory -G 'Visual Studio 17 2022' -A x64 `
-    -DASMJIT_STATIC=TRUE `
-    -DASMJIT_BUILD_TEST=FALSE `
-    -DCMAKE_POLICY_DEFAULT_CMP0091=NEW `
-    -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
-if ($LASTEXITCODE -ne 0) { throw 'AsmJit CMake configure failed.' }
-
-& $cmake --build $WorkDirectory --config Release --parallel 2
-if ($LASTEXITCODE -ne 0) { throw 'AsmJit CMake build failed.' }
+# No -G: pick the newest installed Visual Studio generator (VS2022 on
+# windows-2022, newer on future images) and force x64 with -A. Static AsmJit
+# with the static /MT CRT. The pinned commit's CMake already defaults CMP0091 to
+# NEW and builds no tests for the static target, so the (unused in this
+# revision) ASMJIT_BUILD_TEST / CMP0091 overrides are deliberately not passed.
+$configureArgs = @(
+    '-S', $src,
+    '-B', $WorkDirectory,
+    '-A', 'x64',
+    '-DASMJIT_STATIC=TRUE',
+    '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded'
+)
+Invoke-Native -FilePath $cmake -Arguments $configureArgs -FailureMessage 'AsmJit CMake configure failed.'
+Invoke-Native -FilePath $cmake -Arguments @('--build', $WorkDirectory, '--config', 'Release', '--parallel', '2') -FailureMessage 'AsmJit CMake build failed.'
 
 $built = Get-ChildItem -LiteralPath $WorkDirectory -Recurse -Filter 'asmjit*.lib' -File |
     Where-Object { $_.Name -notmatch 'test' } |
@@ -43,9 +48,9 @@ Write-Host ("Copied {0} ({1:N0} bytes) -> AsmJit.lib" -f $built.Name, $built.Len
 New-Sha256Manifest -Directory $out -ManifestPath (Join-Path $out 'SHA256SUMS.txt')
 [ordered]@{
     kind = 'asmjit-win64'
-    source = 'asmjit/asmjit git tag 1.14.0'
+    source = 'asmjit/asmjit pinned commit 9eb6edbf711ceb25346ee40bae68b40a4505cdf5 (last master revision with ASMJIT_ABI_NAMESPACE v1_14; upstream has no git tags)'
     source_path = $src
-    cmake = '-DASMJIT_STATIC=TRUE -DASMJIT_BUILD_TEST=FALSE -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded'
+    cmake = 'auto Visual Studio generator (-A x64); -DASMJIT_STATIC=TRUE -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded (static /MT)'
     crt = '/MT'
     upstream_library = $built.Name
     outputs = @('AsmJit.lib')

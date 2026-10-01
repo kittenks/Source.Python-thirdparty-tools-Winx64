@@ -118,3 +118,39 @@ function Find-CMake {
     }
     throw 'cmake.exe was not found. Install the Visual Studio C++ CMake component or add cmake to PATH.'
 }
+
+function Invoke-Native {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [string]$FailureMessage = 'Native command failed.'
+    )
+    # Native tools (cmake, cl, lib, msbuild) routinely write progress and
+    # warnings to stderr. Under $ErrorActionPreference='Stop' PowerShell turns
+    # the FIRST stderr line into a terminating NativeCommandError even when the
+    # process exits 0 (CMake policy/deprecation warnings are a real example on
+    # both CMake 3.x and 4.x). Run via Start-Process with stdout and stderr
+    # redirected to temp files, so PowerShell never wraps native stderr as
+    # ErrorRecord objects; echo both logs and decide solely on the exit code.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $outLog = [IO.Path]::GetTempFileName()
+    $errLog = [IO.Path]::GetTempFileName()
+    $code = 0
+    try {
+        $argString = ($Arguments | ForEach-Object {
+            $s = [string]$_
+            if ($s -match '\s') { '"' + $s + '"' } else { $s }
+        }) -join ' '
+        $p = Start-Process -FilePath $FilePath -ArgumentList $argString -NoNewWindow -Wait -PassThru `
+            -RedirectStandardOutput $outLog -RedirectStandardError $errLog
+        $code = $p.ExitCode
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
+    if (Test-Path -LiteralPath $outLog) { Get-Content -LiteralPath $outLog | ForEach-Object { Write-Host $_ } }
+    if (Test-Path -LiteralPath $errLog) { Get-Content -LiteralPath $errLog | ForEach-Object { Write-Host $_ } }
+    Remove-Item -LiteralPath $outLog, $errLog -Force -ErrorAction SilentlyContinue
+    if ($code -ne 0) { throw "$FailureMessage (exit code $code)." }
+}

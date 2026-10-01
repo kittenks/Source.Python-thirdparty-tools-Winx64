@@ -22,7 +22,9 @@ $required = @(
     (Join-Path $dh 'src\registers.cpp'),
     (Join-Path $dh 'src\x64MsWin64.cpp'),
     (Join-Path $hde 'hde64.c'),
-    (Join-Path $asmInclude 'asmjit\x86.h')
+    # Vendored AsmJit uses the flat header layout (include/x86.h), not the
+    # upstream asmjit/x86.h nested one. hook_x64.cpp does #include "x86.h".
+    (Join-Path $asmInclude 'x86.h')
 )
 foreach ($need in $required) {
     if (-not (Test-Path -LiteralPath $need)) { throw "Missing DynamicHooks source: $need" }
@@ -36,10 +38,15 @@ $out = New-CleanDirectory $OutputDirectory
 
 Import-VcToolsX64
 
+# Mirror the include dirs CMake uses when it compiles these same translation
+# units into core on x86-64 (see src/makefiles/win32/win32.base.cmake): the src/
+# root (for "thirdparty/HDE64/hde64.h"), DynamicHooks/include/conventions (for
+# x64MsWin64.h), the HDE64 root itself, and the flat AsmJit include dir.
 $include = @(
     "/I$dh\include",
     "/I$dh\include\conventions",
     "/I$srcRoot",
+    "/I$hde",
     "/I$asmInclude"
 )
 $defines = @('/DDYNAMICHOOKS_X86_64', '/DASMJIT_STATIC', '/DWIN32', '/D_WIN32', '/D_WIN64', '/DNDEBUG')
@@ -48,7 +55,7 @@ $cxxFlags = @('/c', '/MT', '/O2', '/EHsc', '/std:c++17', '/W3', '/wd4005', '/nol
 
 function Invoke-Cl {
     param([string]$SourceFile, [string]$ObjectFile, [string[]]$Flags)
-    & cl.exe @Flags @$defines @$include "$SourceFile" "/Fo$ObjectFile"
+    & cl.exe @Flags @defines @include "$SourceFile" "/Fo$ObjectFile"
     if ($LASTEXITCODE -ne 0) { throw "cl.exe failed for $SourceFile (exit $LASTEXITCODE)" }
     if (-not (Test-Path -LiteralPath $ObjectFile)) { throw "Object file was not produced: $ObjectFile" }
 }

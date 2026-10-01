@@ -12,7 +12,7 @@ on:
         type: boolean
         default: true
       build_asmjit:
-        description: "AsmJit 1.14.0 static lib, /MT"
+        description: "AsmJit static lib (ABI namespace v1_14, pinned commit), /MT"
         type: boolean
         default: true
       build_dyncall:
@@ -49,7 +49,7 @@ jobs:
         run: |
           . .\scripts\common.ps1
           New-Item -ItemType Directory -Force _deps | Out-Null
-          Download-CheckedFile -Url 'https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz' -Destination '_deps\boost.tar.gz'
+          Download-CheckedFile -Url 'https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz' -OutFile '_deps\boost.tar.gz' -ExpectedSha256 'f55c340aa49763b1925ccf02b2e83f35fdcf634c9d5164a2acb87540173c741d'
           tar -xzf _deps\boost.tar.gz -C _deps
           if (-not (Test-Path '_deps\boost_1_87_0\boost\python.hpp')) { throw 'Boost extraction failed.' }
       - name: Build Boost
@@ -70,11 +70,15 @@ jobs:
     steps:
       - name: Checkout tools repository
         uses: actions/checkout@v4
-      - name: Checkout AsmJit 1.14.0
+      - name: Checkout AsmJit (pinned v1_14 ABI commit)
         uses: actions/checkout@v4
         with:
           repository: asmjit/asmjit
-          ref: '1.14.0'
+          # Upstream asmjit has no git tags; pin the last master commit whose
+          # ASMJIT_ABI_NAMESPACE is v1_14 (matches the headers vendored in
+          # Source.Python). Master has since moved to v1_18 and is incompatible.
+          # See manifests/versions.json for the full rationale.
+          ref: '9eb6edbf711ceb25346ee40bae68b40a4505cdf5'
           path: _deps/asmjit
           persist-credentials: false
       - name: Show AsmJit revision
@@ -98,19 +102,22 @@ jobs:
     steps:
       - name: Checkout tools repository
         uses: actions/checkout@v4
-      - name: Checkout dyncall r1.1
-        uses: actions/checkout@v4
-        with:
-          repository: dyncall/dyncall
-          ref: 'r1.1'
-          path: _deps/dyncall
-          persist-credentials: false
+      - name: Download and extract dyncall 1.1
+        shell: pwsh
+        run: |
+          . .\scripts\common.ps1
+          New-Item -ItemType Directory -Force _deps | Out-Null
+          Download-CheckedFile -Url 'https://dyncall.org/r1.1/dyncall-1.1.tar.gz' -OutFile '_deps\dyncall.tar.gz' -ExpectedSha256 'cf97fa3f142db832ff34235caa4d69a7d5f16716573d446b2d95069126e88795'
+          tar -xzf _deps\dyncall.tar.gz -C _deps
+          if (-not (Test-Path '_deps\dyncall-1.1\CMakeLists.txt')) { throw 'dyncall extraction failed (missing top-level CMakeLists.txt).' }
       - name: Show dyncall revision
         shell: pwsh
-        run: "git -C _deps/dyncall log -1 --oneline; git -C _deps/dyncall tag --points-at HEAD"
+        run: |
+          Write-Host 'dyncall 1.1 - official release; hg tag r1.1 / changeset 2f28f26c72a7 (dyncall.org Mercurial)'
+          Get-Content _deps\dyncall-1.1\ChangeLog | Select-Object -First 5
       - name: Build dyncall
         shell: pwsh
-        run: .\scripts\build-dyncall.ps1 -Source '_deps\dyncall'
+        run: .\scripts\build-dyncall.ps1 -Source '_deps\dyncall-1.1'
       - name: Upload dyncall artifact
         uses: actions/upload-artifact@v4
         with:

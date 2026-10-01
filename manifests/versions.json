@@ -10,7 +10,7 @@
   "boost": {
     "version": "1.87.0",
     "source_url": "https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz",
-    "expected_sha256": "",
+    "expected_sha256": "f55c340aa49763b1925ccf02b2e83f35fdcf634c9d5164a2acb87540173c741d",
     "build": "direct cl.exe/lib.exe (b2's MSVC toolset provisioning is bypassed); see scripts/build-boost.ps1",
     "python_for_headers": "actions/setup-python@v5, python-version 3.13, architecture x64 (headers only; the import lib is vendored in Source.Python)",
     "components": {
@@ -37,22 +37,27 @@
     ]
   },
   "asmjit": {
-    "version": "1.14.0",
+    "version": "1.14.x (ABI namespace v1_14)",
     "scm": "git",
     "source_url": "https://github.com/asmjit/asmjit.git",
-    "ref": "1.14.0",
-    "expected_commit": "",
+    "ref": "9eb6edbf711ceb25346ee40bae68b40a4505cdf5",
+    "expected_commit": "9eb6edbf711ceb25346ee40bae68b40a4505cdf5",
+    "pin_note": "Upstream asmjit publishes no git tags or GitHub releases. Pinned to the last master commit whose src/asmjit/core/api-config.h defines ASMJIT_ABI_NAMESPACE v1_14 (dated 2025-05-08, the parent of the v1.15 ABI bump 6c9a6b24). This matches the headers vendored in Source.Python (AsmJit/include/core/api-config.h: '#define ASMJIT_ABI_NAMESPACE v1_14'). Current master is v1_18 and is ABI-incompatible and must not be used.",
     "build": "cmake -A x64 -DASMJIT_STATIC=TRUE -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded",
     "outputs": ["AsmJit.lib"]
   },
   "dyncall": {
     "version": "1.1",
-    "scm": "git",
-    "source_url": "https://github.com/dyncall/dyncall.git",
-    "ref": "r1.1",
-    "expected_commit": "",
-    "vendored_note": "The libraries vendored in Source.Python were originally built from a 1.2-dev master snapshot. The Win64 dyncall/dyncallback/dynload backends are unchanged between release 1.1 and that snapshot, so the formal 1.1 release is pinned for a reproducible, tagged source.",
-    "build": "cmake -A x64 with static CRT (fallback: Nmakefile)",
+    "scm": "release-tarball",
+    "source_url": "https://dyncall.org/r1.1/dyncall-1.1.tar.gz",
+    "checksums_url": "https://dyncall.org/r1.1/SHA256",
+    "expected_sha256": "cf97fa3f142db832ff34235caa4d69a7d5f16716573d446b2d95069126e88795",
+    "toplevel_dir": "dyncall-1.1",
+    "hg_tag": "r1.1",
+    "hg_changeset": "2f28f26c72a7",
+    "source_note": "The canonical dyncall repository is a Mercurial hgweb instance at dyncall.org, not GitHub: hgweb archive downloads are disabled (HTTP 403/404) and there is no official GitHub mirror. The official release tarball with its published SHA256 is therefore used; it is verified to contain a top-level CMakeLists.txt and cross-checks against hg changeset 2f28f26c72a7 (tag r1.1).",
+    "vendored_note": "The libraries vendored in Source.Python were originally built from a 1.2-dev master snapshot. The Win64 dyncall/dyncallback/dynload backends are unchanged between release 1.1 and that snapshot, so the formal 1.1 release is pinned for a reproducible, checksummed source.",
+    "build": "cmake -A x64 -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DLANG_CXX=OFF -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded (upstream cmake_minimum_required is 2.6, hence the policy override; tests/docs are EXCLUDE_FROM_ALL)",
     "outputs": ["libdyncall_s.lib", "libdyncallback_s.lib", "libdynload_s.lib"]
   },
   "dynamichooks": {
